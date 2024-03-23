@@ -1,13 +1,15 @@
 import yfinance as yf
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
-import numpy as np
+import pandas as pd
 
-def get_stock_performance(symbol, start_date, end_date):
+def get_stock_performance(symbol):
     try:
         # Retrieve stock data using yfinance
-        stock_data = yf.download(symbol, start=start_date, end=end_date)
-        return stock_data
+        stock_data = yf.Ticker(symbol)
+        print(stock_data.quarterly_income_stmt)
+        print(stock_data.quarterly_balance_sheet)
+        return stock_data.history(period="3mo")
     except Exception as e:
         print("Error occurred:", str(e))
         return None
@@ -34,28 +36,29 @@ def calculate_volatility(stock_data, window_size):
 
 def plot_volume(stock_data):
     plt.figure(figsize=(10, 6))
-    plt.plot(stock_data.index, stock_data['Volume'], color='blue', marker='o', linestyle='-')
-    plt.title('Volume of Shares Sold for ABB India Ltd. (Day-wise)')
-    plt.xlabel('Date')
+    plt.bar(stock_data.index.strftime('%Y-%m'), stock_data['Volume'], color='blue')
+    plt.title('Volume of Shares Sold for ABB India Ltd. (Month-wise)')
+    plt.xlabel('Month')
     plt.ylabel('Volume')
+    plt.xticks(rotation=45)
     plt.grid(True)
     plt.show()
 
 def plot_market_cap(stock_data):
     plt.figure(figsize=(10, 6))
-    plt.plot(stock_data.index, stock_data['MarketCap'], color='red', marker='o', linestyle='-')
-    plt.title('Market Capitalization for ABB India Ltd. (Day-wise)')
-    plt.xlabel('Date')
+    plt.plot(stock_data.resample('MS').last().index, stock_data.resample('MS').last()['MarketCap'], color='red', marker='o', linestyle='-')
+    plt.title('Market Capitalization for ABB India Ltd. (Month-wise)')
+    plt.xlabel('Month')
     plt.ylabel('Market Cap')
     plt.grid(True)
     plt.show()
 
 def plot_moving_average(stock_data, window_size):
     plt.figure(figsize=(10, 6))
-    plt.plot(stock_data.index, stock_data['Close'], color='blue', label='Close Price')
-    plt.plot(stock_data.index, stock_data['MovingAverage'], color='red', label=f'Moving Average ({window_size} days)')
-    plt.title(f'Stock Price and Moving Average for ABB India Ltd. (Day-wise)')
-    plt.xlabel('Date')
+    plt.plot(stock_data.resample('MS').last().index, stock_data.resample('MS').last()['Close'], color='blue', label='Close Price')
+    plt.plot(stock_data.resample('MS').last().index, stock_data.resample('MS').last()['MovingAverage'], color='red', label=f'Moving Average ({window_size} days)')
+    plt.title(f'Stock Price and Moving Average for ABB India Ltd. (Month-wise)')
+    plt.xlabel('Month')
     plt.ylabel('Price')
     plt.legend()
     plt.grid(True)
@@ -63,18 +66,18 @@ def plot_moving_average(stock_data, window_size):
 
 def plot_percentage_change(stock_data):
     plt.figure(figsize=(10, 6))
-    plt.plot(stock_data.index, stock_data['PercentageChange'], color='green', marker='o', linestyle='-')
-    plt.title('Daily Percentage Change in Stock Prices for ABB India Ltd. (Day-wise)')
-    plt.xlabel('Date')
+    plt.plot(stock_data.resample('MS').last().index, stock_data.resample('MS').last()['PercentageChange'], color='green', marker='o', linestyle='-')
+    plt.title('Monthly Percentage Change in Stock Prices for ABB India Ltd.')
+    plt.xlabel('Month')
     plt.ylabel('Percentage Change (%)')
     plt.grid(True)
     plt.show()
 
 def plot_volatility(stock_data, window_size):
     plt.figure(figsize=(10, 6))
-    plt.plot(stock_data.index, stock_data['Volatility'], color='purple', marker='o', linestyle='-')
-    plt.title(f'Volatility of Stock Prices for ABB India Ltd. (Rolling {window_size} days)')
-    plt.xlabel('Date')
+    plt.plot(stock_data.resample('MS').last().index, stock_data.resample('MS').last()['Volatility'], color='purple', marker='o', linestyle='-')
+    plt.title(f'Volatility of Stock Prices for ABB India Ltd. (Monthly, Rolling {window_size} days)')
+    plt.xlabel('Month')
     plt.ylabel('Volatility')
     plt.grid(True)
     plt.show()
@@ -83,21 +86,17 @@ def main():
     # Symbol for ABB India Ltd. on NSE
     symbol = "ABB.NS"
     
-    # Calculate start and end dates for the last 3 months
-    end_date = datetime.now().strftime("%Y-%m-%d")
-    start_date = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
-    
-    # Get stock market performance data
-    stock_performance = get_stock_performance(symbol, start_date, end_date)
+    # Get stock market performance data for the last 3 months
+    stock_performance = get_stock_performance(symbol)
     
     if stock_performance is not None:
         print("Stock Market Performance for ABB India Ltd. (Last 3 Months):")
         print(stock_performance)
-        
+
         # Calculate market cap
         stock_performance_with_market_cap = calculate_market_cap(stock_performance)
         
-        # Plot volume, market cap, moving average, percentage change, and volatility in separate windows
+        # Plot volume, market cap, moving average, percentage change, and volatility month-wise
         plot_volume(stock_performance)
         plot_market_cap(stock_performance_with_market_cap)
         
@@ -110,8 +109,14 @@ def main():
         
         stock_performance_with_volatility = calculate_volatility(stock_performance_with_percentage_change, window_size)
         plot_volatility(stock_performance_with_volatility, window_size)
+
+        stock_info = yf.Ticker(symbol).info
+        print("\nStock Info:")
+        for key, value in stock_info.items():
+            print(f"{key}: {value}")
+
     else:
-        print("Failed to retrieve stock market performance data.")
+        print("Failed to retrieve stock market performance")
 
 if __name__ == "__main__":
     main()
